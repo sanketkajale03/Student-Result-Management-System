@@ -2,16 +2,14 @@ from database.database import get_connection
 
 
 def delete_student():
-    """Delete a student by roll number."""
-
     print("\n" + "=" * 50)
-    print("            DELETE STUDENT")
+    print("              DELETE STUDENT")
     print("=" * 50)
 
-    roll_number = input("Enter roll number: ").strip()
+    roll_number = input("Enter student roll number: ").strip()
 
     if not roll_number:
-        print("Roll number cannot be empty.")
+        print("Error: Roll number cannot be empty.")
         return
 
     connection = None
@@ -21,45 +19,44 @@ def delete_student():
         connection = get_connection()
 
         if connection is None:
-            print("Database connection failed.")
+            print("Error: Could not connect to the database.")
             return
 
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
-        cursor.execute(
-            "SELECT student_name, roll_number, course FROM students WHERE roll_number=%s",
-            (roll_number,),
-        )
+        # Check whether the student exists
+        check_query = """
+            SELECT student_name
+            FROM students
+            WHERE roll_number = %s
+        """
 
+        cursor.execute(check_query, (roll_number,))
         student = cursor.fetchone()
 
         if student is None:
             print("\nStudent not found.")
             return
 
-        print("\nStudent Details")
-        print("-" * 40)
-        print(f"Name        : {student['student_name']}")
-        print(f"Roll Number : {student['roll_number']}")
-        print(f"Course      : {student['course']}")
-        print("-" * 40)
+        student_name = student[0]
 
-        confirm = input("Delete this student? (y/n): ").strip().lower()
+        # Delete the student
+        delete_query = """
+            DELETE FROM students
+            WHERE roll_number = %s
+        """
 
-        if confirm != "y":
-            print("Deletion cancelled.")
-            return
-
-        cursor.execute(
-            "DELETE FROM students WHERE roll_number=%s",
-            (roll_number,),
-        )
-
+        cursor.execute(delete_query, (roll_number,))
         connection.commit()
 
-        print("\nStudent deleted successfully!")
+        print("\nStudent deleted successfully.")
+        print(f"Name        : {student_name}")
+        print(f"Roll Number : {roll_number}")
 
     except Exception as error:
+        if connection:
+            connection.rollback()
+
         print(f"Error: {error}")
 
     finally:
